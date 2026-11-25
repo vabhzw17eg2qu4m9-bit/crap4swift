@@ -1,0 +1,27 @@
+name: Quality
+
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Convert coverage to LCOV
+        run: |
+          find .build -name "*.profraw" -print0 | xargs -0 xcrun llvm-profdata merge -sparse -o Coverage.profdata
+          TESTBIN="$(find .build -name "*.xctest" -type d | head -1)"
+          TESTEXE="$TESTBIN/Contents/MacOS/$(basename "$TESTBIN" .xctest)"
+          mkdir -p coverage
+          xcrun llvm-cov export -format=lcov -instr-profile Coverage.profdata "$TESTEXE" > coverage/coverage.lcov
+          test -s coverage/coverage.lcov
+
+      - name: Build release
+        run: swift build -c release
+
+      - name: CRAP gate (self-hosting)
+        run: .build/release/crap4swift Sources --coverage coverage/coverage.lcov --threshold 8.0
