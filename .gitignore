@@ -1,0 +1,5 @@
+.build/
+.conformance/
+coverage/
+*.profdata
+.DS_Store
